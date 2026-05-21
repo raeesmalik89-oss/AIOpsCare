@@ -1,0 +1,185 @@
+
+version: "3.8"
+ 
+services:
+ 
+  # ──────────────────────────────────────────
+  # ZOOKEEPER  (Kafka dependency)
+  # ──────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # KAFKA  (Event streaming)
+  # ──────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # POSTGRES  (Keycloak database)
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_pass
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # KEYCLOAK  (Identity & access management)
+  # ──────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: keycloak
+    command: start-dev --import-realm
+    depends_on:
+      - postgres
+    ports:
+      - "8082:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_pass
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ../security/keycloak:/opt/keycloak/data/import
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # OPA  (Open Policy Agent — authorization)
+  # ──────────────────────────────────────────
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: opa
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --log-level=info
+      - /policies
+    ports:
+      - "8181:8181"
+    volumes:
+      - ../security/opa:/policies
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # OPENFAAS GATEWAY  (Serverless gateway)
+  # ──────────────────────────────────────────
+  openfaas-gateway:
+    image: ghcr.io/openfaas/gateway:latest
+    container_name: openfaas-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      basic_auth: "false"
+      functions_provider_url: "http://predict-fn:5000/"
+      direct_functions: "true"
+    depends_on:
+      - predict-fn
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # PREDICT FUNCTION  (OpenFaaS serverless)
+  # ──────────────────────────────────────────
+  predict-fn:
+    build:
+      context: ../functions/predict
+      dockerfile: Dockerfile
+    container_name: predict-fn
+    environment:
+      MODEL_PATH: /app/ml/model.joblib
+    volumes:
+      - ../ml/model.joblib:/app/ml/model.joblib
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # FASTAPI APP  (API Gateway + Auth)
+  # ──────────────────────────────────────────
+  fastapi:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      OPA_URL: http://opa:8181
+      JAEGER_ENDPOINT: http://jaeger:4318/v1/traces
+    depends_on:
+      - opa
+      - keycloak
+      - predict-fn
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # PROMETHEUS  (Metrics collection)
+  # ──────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # GRAFANA  (Metrics dashboards)
+  # ──────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+ 
+  # ──────────────────────────────────────────
+  # JAEGER  (Distributed tracing)
+  # ──────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    restart: unless-stopped
+ 
+volumes:
+  kafka-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:

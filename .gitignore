@@ -1,0 +1,72 @@
+
+# ======================
+# Python
+# ======================
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ======================
+# Environment Variables
+# ======================
+.env
+.env.*
+
+# ======================
+# Secrets & Credentials
+# ======================
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Keycloak exports
+security/keycloak/realm-export.json
+
+# ======================
+# Logs
+# ======================
+*.log
+
+# ======================
+# Databases
+# ======================
+*.db
+*.sqlite
+*.sqlite3
+
+# ======================
+# ML Models
+# ======================
+*.pkl
+*.joblib
+*.h5
+
+# ======================
+# Docker Runtime Data
+# ======================
+postgres-data/
+kafka-data/
+zookeeper-data/
+
+# ======================
+# Prometheus & Grafana
+# ======================
+monitoring/prometheus/data/
+monitoring/grafana/data/
+
+# ======================
+# IDE Files
+# ======================
+.vscode/
+.idea/
+
+# ======================
+# OS Files
+# ======================
+.DS_Store
+Thumbs.db
+*.zip

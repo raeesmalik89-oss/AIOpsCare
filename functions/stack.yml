@@ -1,0 +1,15 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://localhost:8080
+
+functions:
+  sepsis-predict:
+    lang: dockerfile
+    handler: ./predict
+    image: aiopscare/sepsis-predict:latest
+    environment:
+      MODEL_PATH: /app/ml/model.joblib
+    labels:
+      com.openfaas.scale.min: "1"
+      com.openfaas.scale.max: "5"

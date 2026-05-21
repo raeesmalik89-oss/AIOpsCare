@@ -1,0 +1,35 @@
+{
+  "realm": "aiopscare",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "aiopscare-api",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "client_secret",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "icu-staff", "description": "ICU medical staff — can call /predict" },
+      { "name": "admin", "description": "System administrator" }
+    ]
+  },
+  "users": [
+    {
+      "username": "icu-user",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "user_password", "temporary": false }
+      ],
+      "realmRoles": ["icu-staff"]
+    }
+  ]
+}
