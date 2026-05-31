@@ -2,6 +2,11 @@
 from pydantic import BaseModel
 
 class PatientData(BaseModel):
-    heart_rate: float
-    temperature: float
-    respiratory_rate: float
+    HR: float
+    O2Sat: float
+    Temp: float
+    SBP: float
+    MAP: float
+    Resp: float
+    Age: float
+    ICULOS: float

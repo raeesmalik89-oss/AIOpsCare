@@ -11,8 +11,8 @@ def generate_alerts(data):
 
     # -----------------------------------
     # High Heart Rate Alert
-    # -----------------------------------
-    if data.heart_rate > 100:
+    # --------------------------------
+    if data.HR > 100:
 
         alerts.append(
             "High Heart Rate Detected"
@@ -21,7 +21,7 @@ def generate_alerts(data):
     # -----------------------------------
     # High Fever Alert
     # -----------------------------------
-    if data.temperature > 38:
+    if data.Temp > 38:
 
         alerts.append(
             "High Fever Detected"
@@ -30,7 +30,7 @@ def generate_alerts(data):
     # -----------------------------------
     # Respiratory Risk Alert
     # -----------------------------------
-    if data.respiratory_rate > 24:
+    if data.Resp > 24:
 
         alerts.append(
             "Abnormal Respiratory Rate"

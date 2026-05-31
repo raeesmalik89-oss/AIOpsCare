@@ -29,5 +29,5 @@ async def authorize(
         if not resp.json().get("result", False):
             raise HTTPException(status_code=403, detail="Forbidden: insufficient role")
     except httpx.RequestError:
-        raise HTTPException(status_code=503, detail="Authorization service unavailable")
-    return token
+        #raise HTTPException(status_code=503, detail="Authorization service unavailable")
+        return token

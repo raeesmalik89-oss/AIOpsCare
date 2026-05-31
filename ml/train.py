@@ -1,33 +1,33 @@
+
 import os
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import cross_val_score
 import pandas as pd
 import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
-# Synthetic training data — replace with real ICU dataset (e.g. MIMIC-III) before production
-data = {
-    "heart_rate":       [80, 95, 110, 70, 120, 85, 105, 72, 115, 90],
-    "temperature":      [36.5, 38.2, 39.1, 36.8, 40.0, 37.0, 38.8, 36.6, 39.5, 37.5],
-    "respiratory_rate": [18, 22, 30, 16, 35, 19, 28, 15, 32, 21],
-    "sepsis":           [0, 1, 1, 0, 1, 0, 1, 0, 1, 0],
-}
+FEATURES = ["HR","O2Sat","Temp","SBP","MAP","Resp","Age","ICULOS"]
 
-df = pd.DataFrame(data)
-X = df[["heart_rate", "temperature", "respiratory_rate"]]
-y = df["sepsis"]
+print("Loading real PhysioNet dataset...")
+df = pd.read_csv("data/Dataset.csv")
+df = df[FEATURES + ["SepsisLabel"]].dropna()
 
-# Pipeline: scale features then classify (important for logistic regression)
+X = df[FEATURES]
+y = df["SepsisLabel"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
 pipeline = Pipeline([
     ("scaler", StandardScaler()),
-    ("classifier", LogisticRegression(random_state=42)),
+    ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
 ])
 
-scores = cross_val_score(pipeline, X, y, cv=5, scoring="accuracy")
-print(f"Cross-val accuracy: {scores.mean():.2f} (+/- {scores.std():.2f})")
+print("Training on real ICU patient data...")
+pipeline.fit(X_train, y_train)
 
-pipeline.fit(X, y)
+print(classification_report(y_test, pipeline.predict(X_test)))
 
 output_path = os.path.join(os.path.dirname(__file__), "model.joblib")
 joblib.dump(pipeline, output_path)
