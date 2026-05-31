@@ -119,6 +119,8 @@ services:
       MODEL_PATH: /app/ml/model.joblib
     volumes:
       - ../ml/model.joblib:/app/ml/model.joblib
+    ports:
+      - "5000:5000"
     restart: unless-stopped
  
   # ──────────────────────────────────────────
