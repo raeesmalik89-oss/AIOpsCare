@@ -1,34 +1,44 @@
+
 import os
 import json
-import httpx
+import requests
 from kafka import KafkaConsumer
 
-KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:29092")
-OPENFAAS_URL = os.getenv("OPENFAAS_URL", "http://openfaas-gateway:8080")
-FUNCTION_ENDPOINT = f"{OPENFAAS_URL}/function/sepsis-predict"
+KAFKA_BROKER = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+TOPIC = "patient-vitals"
+API_URL = "http://localhost:8000/predict"
+TOKEN = "testtoken"
 
 consumer = KafkaConsumer(
-    "patient-events",
+    TOPIC,
     bootstrap_servers=KAFKA_BROKER,
+    value_deserializer=lambda v: json.loads(v.decode("utf-8")),
     auto_offset_reset="earliest",
-    value_deserializer=lambda x: json.loads(x.decode("utf-8")),
+    group_id="aiopscare-consumer"
 )
 
-print("Consumer listening — forwarding events to OpenFaaS predict function...")
+print(f"Listening on Kafka topic: {TOPIC}")
 
 for message in consumer:
-    patient_data = message.value
-    print(f"\nReceived event: {patient_data}")
-
+    record = message.value
     try:
-        response = httpx.post(FUNCTION_ENDPOINT, json=patient_data, timeout=10.0)
+        payload = {
+            "HR":     float(record.get("HR", 0) or 0),
+            "O2Sat":  float(record.get("O2Sat", 0) or 0),
+            "Temp":   float(record.get("Temp", 0) or 0),
+            "SBP":    float(record.get("SBP", 0) or 0),
+            "MAP":    float(record.get("MAP", 0) or 0),
+            "Resp":   float(record.get("Resp", 0) or 0),
+            "Age":    float(record.get("Age", 0) or 0),
+            "ICULOS": float(record.get("ICULOS", 0) or 0),
+        }
+        response = requests.post(
+            API_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {TOKEN}"}
+        )
         result = response.json()
-        print(f"Prediction: {result['sepsis_prediction']}")
-        if result.get("alerts"):
-            print(f"Alerts: {result['alerts']}")
-        if result["sepsis_prediction"] == 1:
-            print("ACTION: High sepsis risk — escalating to ICU team.")
-        else:
-            print("STATUS: Patient stable.")
-    except httpx.RequestError as e:
-        print(f"ERROR: Could not reach predict function — {e}")
+        patient_id = record.get("patient_id", "unknown")
+        print(f"Patient {patient_id} -> Sepsis: {result['sepsis_prediction']} | Alerts: {result['alerts']}")
+    except Exception as e:
+        print(f"Error: {e}")
