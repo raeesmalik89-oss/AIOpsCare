@@ -109,10 +109,15 @@ async def predict(
     ):
 
         prediction = model.predict([[
-            data.heart_rate,
-            data.temperature,
-            data.respiratory_rate,
-        ]])
+    data.HR,
+    data.O2Sat,
+    data.Temp,
+    data.SBP,
+    data.MAP,
+    data.Resp,
+    data.Age,
+    data.ICULOS,
+]])
 
         result = int(prediction[0])
 
